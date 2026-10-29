@@ -1,0 +1,60 @@
+import asyncio
+import requests
+import time
+from playwright.async_api import async_playwright
+from bs4 import BeautifulSoup
+
+# Remplacez avec vos vraies informations Telegram
+TELEGRAM_TOKEN = "VOTRE_TOKEN_BOT_ICI"
+TELEGRAM_CHAT_ID = "VOTRE_CHAT_ID_ICI"
+
+def send_telegram_alert(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    try:
+        requests.post(url, data=payload, timeout=5)
+    except Exception as e:
+        print(f"Erreur Telegram : {e}")
+
+async def scrape_and_notify():
+    print("🌐 Scan de Flashscore en cours...")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto("https://www.flashscore.fr/tennis/", wait_until="networkidle")
+        content = await page.content()
+        await browser.close()
+
+    soup = BeautifulSoup(content, 'html.parser')
+    match_events = soup.find_all('div', class_='event__match')
+
+    for match in match_events[:10]:
+        try:
+            home_player = match.find('div', class_='event__homeParticipant').text.strip()
+            away_player = match.find('div', class_='event__awayParticipant').text.strip()
+            odds_elements = match.find_all('div', class_='odds__value')
+
+            if len(odds_elements) >= 2:
+                odds_p1 = float(odds_elements[0].text.strip())
+                odds_p2 = float(odds_elements[1].text.strip())
+            else:
+                continue
+
+            if odds_p1 >= 2.10:
+                msg = f"🚀 **VALUE DÉTECTÉE !**\n\n🎾 Match: {home_player} vs {away_player}\n🎯 Pari: **{home_player}**\n📊 Cote: `{odds_p1}`"
+                send_telegram_alert(msg)
+            elif odds_p2 >= 2.10:
+                msg = f"🚀 **VALUE DÉTECTÉE !**\n\n🎾 Match: {home_player} vs {away_player}\n🎯 Pari: **{away_player}**\n📊 Cote: `{odds_p2}`"
+                send_telegram_alert(msg)
+        except AttributeError:
+            continue
+
+if __name__ == "__main__":
+    while True:
+        asyncio.run(scrape_and_notify())
+        print("💤 Pause de 30 minutes...")
+        time.sleep(1800) # Relance le scan toutes les 30 minutes
