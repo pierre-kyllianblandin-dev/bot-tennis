@@ -45,10 +45,10 @@ async def scrape_and_notify():
             else:
                 continue
 
-            if odds_p1 >= 2.10:
+            if odds_p1 >= 1.40:
                 msg = f"🚀 **VALUE DÉTECTÉE !**\n\n🎾 Match: {home_player} vs {away_player}\n🎯 Pari: **{home_player}**\n📊 Cote: `{odds_p1}`"
                 send_telegram_alert(msg)
-            elif odds_p2 >= 2.10:
+            elif odds_p2 >= 1.40:
                 msg = f"🚀 **VALUE DÉTECTÉE !**\n\n🎾 Match: {home_player} vs {away_player}\n🎯 Pari: **{away_player}**\n📊 Cote: `{odds_p2}`"
                 send_telegram_alert(msg)
         except AttributeError:
